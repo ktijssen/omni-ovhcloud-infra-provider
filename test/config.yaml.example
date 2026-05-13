@@ -1,0 +1,8 @@
+openstack:
+  auth_url: https://auth.cloud.ovh.net/v3
+  username: user-XXXXXXXX
+  password: REPLACE_ME
+  user_domain_name: Default
+  project_domain_name: Default
+  project_id: REPLACE_ME              # OVH Public Cloud Tenant/Project ID
+  # project_name: "1234567890123456"  # alternative to project_id

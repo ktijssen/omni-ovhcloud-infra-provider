@@ -1,0 +1,9 @@
+metadata:
+  name: ovh-gra11-b3-8
+spec:
+  matchLabels: {}
+  infraProviderID: ovhcloud
+  providerData: |
+    region: GRA11
+    flavor: b3-8
+    network: Ext-Net    # public network; use vRack/private network name or UUID for private

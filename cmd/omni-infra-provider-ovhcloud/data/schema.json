@@ -1,0 +1,18 @@
+{
+  "type": "object",
+  "properties": {
+    "region": {
+      "type": "string",
+      "description": "OVH region (e.g. GRA11, SBG5, BHS5). Tip: list with `openstack region list`."
+    },
+    "flavor": {
+      "type": "string",
+      "description": "OpenStack flavor name (e.g. b3-8, c3-8). Tip: list with `openstack flavor list`."
+    },
+    "network": {
+      "type": "string",
+      "description": "Neutron network name or UUID. Use 'Ext-Net' for the OVH public network, or your vRack/private network. Tip: list with `openstack network list`."
+    }
+  },
+  "required": ["region", "flavor", "network"]
+}

@@ -1,0 +1,20 @@
+services:
+  provider:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: image-omni-infra-provider-ovhcloud
+    image: omni-infra-provider-ovhcloud:dev
+    container_name: omni-infra-provider-ovhcloud
+    restart: unless-stopped
+    pull_policy: build
+    environment:
+      OS_AUTH_URL: ${OS_AUTH_URL}
+      OS_USERNAME: ${OS_USERNAME}
+      OS_PASSWORD: ${OS_PASSWORD}
+      OS_USER_DOMAIN_NAME: ${OS_USER_DOMAIN_NAME:-Default}
+      OS_PROJECT_DOMAIN_NAME: ${OS_PROJECT_DOMAIN_NAME:-Default}
+      OS_TENANT_ID: ${OS_TENANT_ID}
+      OS_TENANT_NAME: ${OS_TENANT_NAME}
+      OMNI_ENDPOINT: ${OMNI_ENDPOINT}
+      OMNI_SERVICE_ACCOUNT_KEY: ${OMNI_SERVICE_ACCOUNT_KEY}

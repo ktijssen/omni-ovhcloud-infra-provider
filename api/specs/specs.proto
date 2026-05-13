@@ -1,0 +1,15 @@
+syntax = "proto3";
+package ovhcloudspecs;
+
+option go_package = "github.com/ktijssen/omni-ovhcloud-infra-provider/api/specs";
+
+// MachineSpec is stored in Omni in the infra provisioner state.
+message MachineSpec {
+  string schematic = 1;
+  string talos_version = 2;
+  string image_id = 3;     // Glance image UUID
+  string instance_id = 4;  // Nova server UUID
+  string region = 5;
+  string public_ipv4 = 6;
+  string project_id = 7;   // OpenStack project resolved from MachineClass; recorded for Deprovision
+}

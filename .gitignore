@@ -1,0 +1,7 @@
+_out/
+*.test
+*.out
+.idea/
+.vscode/
+coverage.txt
+.env

@@ -1,0 +1,18 @@
+kind: Cluster
+name: ovh-demo
+kubernetes:
+  version: v1.32.0
+talos:
+  version: v1.13.0
+features:
+  diskEncryption: false
+---
+kind: ControlPlane
+machineClass:
+  name: ovh-gra11-b3-8
+  size: 1
+---
+kind: Workers
+machineClass:
+  name: ovh-gra11-b3-8
+  size: 2
