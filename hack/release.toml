@@ -1,0 +1,6 @@
+# commit to be tagged for the new release
+commit = "HEAD"
+
+project_name = "Omni OVHcloud Infra Provider"
+github_repo = "ktijssen/omni-ovhcloud-infra-provider"
+match_deps = "^github.com/((talos-systems|siderolabs)/[a-zA-Z0-9-]+)$"

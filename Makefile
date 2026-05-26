@@ -171,6 +171,16 @@ tidy:  ## Runs go mod tidy in a Docker toolchain container.
 clean:  ## Removes the artifacts directory.
 	@rm -rf $(ARTIFACTS)
 
+# release
+
+.PHONY: release-notes
+release-notes: $(ARTIFACTS)  ## Generates _out/RELEASE_NOTES.md for the current TAG.
+	@./hack/release.sh release-notes $(ARTIFACTS)/RELEASE_NOTES.md $(TAG)
+
+.PHONY: changelog
+changelog:  ## Prepends release notes for TAG to CHANGELOG.md (run locally before pushing release/*).
+	@./hack/release.sh changelog $(TAG)
+
 .PHONY: renovate-local
 renovate-local:  ## Runs renovate locally to check syntax and test configuration.
 	@docker run --rm \
