@@ -1,0 +1,212 @@
+name: ci
+
+on:
+  push:
+    branches:
+      - main
+      - 'release/v*.*.*'
+  pull_request:
+    branches:
+      - main
+      - 'release/v*.*.*'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f7ce87c1d6bead3e36075b2ce75da1f6cc28aaca # v3.9.0
+
+      - name: Lint
+        run: make lint
+
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f7ce87c1d6bead3e36075b2ce75da1f6cc28aaca # v3.9.0
+
+      - name: Run unit tests
+        run: make unit-tests
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: coverage
+          path: _out/coverage.txt
+          retention-days: 7
+
+  build:
+    runs-on: ubuntu-latest
+    needs:
+      - lint
+      - unit-tests
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          fetch-depth: 0
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3.7.0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f7ce87c1d6bead3e36075b2ce75da1f6cc28aaca # v3.9.0
+
+      - name: Compute version and image tags
+        id: meta
+        run: |
+          set -euo pipefail
+          REF="${GITHUB_REF}"
+          SHORT_SHA="$(git rev-parse --short HEAD)"
+          IMAGE_LC="${IMAGE_NAME,,}"
+
+          if [[ "${GITHUB_EVENT_NAME}" == "pull_request" ]]; then
+            VERSION="pr-${{ github.event.pull_request.number }}-${SHORT_SHA}"
+            TAGS="${REGISTRY}/${IMAGE_LC}:pr-${{ github.event.pull_request.number }}"
+          elif [[ "${REF}" == "refs/heads/main" ]]; then
+            VERSION="main-${SHORT_SHA}"
+            TAGS="${REGISTRY}/${IMAGE_LC}:main"
+          elif [[ "${REF}" =~ ^refs/heads/release/v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+            MAJOR="${BASH_REMATCH[1]}"
+            MINOR="${BASH_REMATCH[2]}"
+            PATCH="${BASH_REMATCH[3]}"
+            VERSION="v${MAJOR}.${MINOR}.${PATCH}"
+            TAGS="${REGISTRY}/${IMAGE_LC}:${MAJOR}.${MINOR}.${PATCH}"
+            TAGS="${TAGS},${REGISTRY}/${IMAGE_LC}:${MAJOR}.${MINOR}"
+            TAGS="${TAGS},${REGISTRY}/${IMAGE_LC}:latest"
+          else
+            echo "Unsupported ref: ${REF}" >&2
+            exit 1
+          fi
+
+          {
+            echo "version=${VERSION}"
+            echo "tags=${TAGS}"
+          } >> "${GITHUB_OUTPUT}"
+
+          echo "VERSION=${VERSION}"
+          echo "TAGS=${TAGS}"
+
+      - name: Log in to ghcr.io
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build (and push on non-PR)
+        uses: docker/build-push-action@4f58ea79222b3b9dc2c8bbdd6debcef730109a75 # v6.9.0
+        with:
+          context: .
+          target: image-omni-infra-provider-ovhcloud
+          platforms: linux/amd64,linux/arm64
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ steps.meta.outputs.version }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  release:
+    runs-on: ubuntu-latest
+    needs:
+      - build
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/release/v')
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          fetch-depth: 0
+
+      - name: Validate release branch and extract version
+        id: version
+        run: |
+          set -euo pipefail
+          BRANCH="${GITHUB_REF#refs/heads/}"
+          if [[ ! "${BRANCH}" =~ ^release/v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Refusing to release: branch '${BRANCH}' does not match release/vX.Y.Z" >&2
+            exit 1
+          fi
+          VERSION="${BRANCH#release/}"
+          echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
+          echo "VERSION=${VERSION}"
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3.7.0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f7ce87c1d6bead3e36075b2ce75da1f6cc28aaca # v3.9.0
+
+      - name: Build release binaries
+        uses: docker/build-push-action@4f58ea79222b3b9dc2c8bbdd6debcef730109a75 # v6.9.0
+        with:
+          context: .
+          target: omni-infra-provider-ovhcloud-all
+          platforms: linux/amd64,linux/arm64
+          outputs: type=local,dest=_out
+          cache-from: type=gha
+
+      - name: Arrange and checksum release artifacts
+        run: |
+          set -euo pipefail
+          VERSION="${{ steps.version.outputs.version }}"
+          cd _out
+
+          # build-push-action with multi-platform local output writes per-platform
+          # subdirs: linux_amd64/, linux_arm64/ (each containing the binary from
+          # the omni-infra-provider-ovhcloud-all scratch stage).
+          for dir in linux_amd64 linux_arm64; do
+            arch="${dir#linux_}"
+            src="$(find "${dir}" -maxdepth 1 -type f -name 'omni-infra-provider-ovhcloud-*' -print -quit)"
+            if [[ -z "${src}" ]]; then
+              echo "no binary found in _out/${dir}" >&2
+              ls -la "${dir}" >&2
+              exit 1
+            fi
+            mv "${src}" "omni-infra-provider-ovhcloud-${VERSION}-linux-${arch}"
+          done
+          rm -rf linux_amd64 linux_arm64
+
+          sha256sum omni-infra-provider-ovhcloud-* > sha256sum.txt
+          sha512sum omni-infra-provider-ovhcloud-* > sha512sum.txt
+          ls -la
+
+      - name: Create draft GitHub release
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          name: ${{ steps.version.outputs.version }}
+          target_commitish: ${{ github.sha }}
+          draft: true
+          files: |
+            _out/omni-infra-provider-ovhcloud-*
+            _out/sha256sum.txt
+            _out/sha512sum.txt

@@ -44,7 +44,7 @@ func Load(path string) (*Config, error) {
 			return nil, fmt.Errorf("failed to open config file %q: %w", path, err)
 		}
 
-		defer f.Close()
+		defer func() { _ = f.Close() }()
 
 		if err := yaml.NewDecoder(f).Decode(cfg); err != nil {
 			return nil, fmt.Errorf("failed to parse config file %q: %w", path, err)
