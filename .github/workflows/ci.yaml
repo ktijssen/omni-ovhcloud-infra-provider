@@ -3,7 +3,6 @@ name: ci
 on:
   push:
     branches:
-      - main
       - 'release/v*.*.*'
   pull_request:
     branches:
@@ -86,16 +85,13 @@ jobs:
           if [[ "${GITHUB_EVENT_NAME}" == "pull_request" ]]; then
             VERSION="pr-${{ github.event.pull_request.number }}-${SHORT_SHA}"
             TAGS="${REGISTRY}/${IMAGE_LC}:pr-${{ github.event.pull_request.number }}"
-          elif [[ "${REF}" == "refs/heads/main" ]]; then
-            VERSION="main-${SHORT_SHA}"
-            TAGS="${REGISTRY}/${IMAGE_LC}:main"
           elif [[ "${REF}" =~ ^refs/heads/release/v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
             MAJOR="${BASH_REMATCH[1]}"
             MINOR="${BASH_REMATCH[2]}"
             PATCH="${BASH_REMATCH[3]}"
             VERSION="v${MAJOR}.${MINOR}.${PATCH}"
-            TAGS="${REGISTRY}/${IMAGE_LC}:${MAJOR}.${MINOR}.${PATCH}"
-            TAGS="${TAGS},${REGISTRY}/${IMAGE_LC}:${MAJOR}.${MINOR}"
+            TAGS="${REGISTRY}/${IMAGE_LC}:v${MAJOR}.${MINOR}.${PATCH}"
+            TAGS="${TAGS},${REGISTRY}/${IMAGE_LC}:v${MAJOR}.${MINOR}"
             TAGS="${TAGS},${REGISTRY}/${IMAGE_LC}:latest"
           else
             echo "Unsupported ref: ${REF}" >&2
@@ -111,20 +107,20 @@ jobs:
           echo "TAGS=${TAGS}"
 
       - name: Log in to ghcr.io
-        if: github.event_name != 'pull_request'
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/release/v')
         uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build (and push on non-PR)
+      - name: Build (and push on release branches)
         uses: docker/build-push-action@4f58ea79222b3b9dc2c8bbdd6debcef730109a75 # v6.9.0
         with:
           context: .
           target: image-omni-infra-provider-ovhcloud
           platforms: linux/amd64,linux/arm64
-          push: ${{ github.event_name != 'pull_request' }}
+          push: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/heads/release/v') }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: |
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
