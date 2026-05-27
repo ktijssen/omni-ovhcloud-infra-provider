@@ -53,18 +53,15 @@ and run the provider directly.
 
 ### Using Docker
 
-> **Note:** The `--omni-service-account-key` flag expects an *infra provider
-> key*, not an Omni service account key. Make sure to provide the correct
-> key type.
+> **Note:** The `--omni-service-account-key` flag expects an *infra provider key*,
+> not an Omni service account key. Make sure to provide the correct key type.
 
-Build the image (no published image yet) and run it:
+Run the provider using Docker:
 
 ```bash
-docker build -t omni-infra-provider-ovhcloud:dev .
-
 docker run -it -d \
   -v ./config.yaml:/config.yaml \
-  omni-infra-provider-ovhcloud:dev \
+  ghcr.io/ktijssen/omni-ovhcloud-infra-provider \
   --config-file /config.yaml \
   --omni-api-endpoint https://<account-name>.omni.siderolabs.io/ \
   --omni-service-account-key <infra-provider-key>
@@ -72,16 +69,26 @@ docker run -it -d \
 
 ### Example Docker Compose
 
-A `docker-compose.yml` is included that builds from source and reads
-credentials from `.env`:
+You can also run the provider using Docker Compose.
+Create a `docker-compose.yaml` file:
+
+```yaml
+services:
+  omni-infra-provider-ovhcloud:
+    image: ghcr.io/ktijssen/omni-ovhcloud-infra-provider
+    volumes:
+      - ./config.yaml:/config.yaml
+    command: >
+      --config-file /config.yaml
+      --omni-api-endpoint https://<account-name>.omni.siderolabs.io/
+      --omni-service-account-key <infra-provider-key>
+    restart: unless-stopped
+```
+
+Start the provider:
 
 ```bash
-cp .env.example .env
-$EDITOR .env       # fill in OVH_* and OMNI_*
-
-make up            # rebuild image (no cache) + recreate container
-make logs          # docker compose logs -f
-make down          # stop + remove
+docker compose up -d
 ```
 
 ## Creating a Machine Class for Auto Provision
@@ -147,7 +154,7 @@ spec:
   replicas: 3
 ```
 
-## Image handling
+### Image handling
 
 On first boot in a given `(project, region)`, the provider downloads the
 Talos OpenStack image (qcow2) from
@@ -158,13 +165,12 @@ uploads it to Glance with name
 schematic, version)` reuses the cached image. Images are not deleted on
 deprovision.
 
-## Using Executable
+### Using Executable
 
-Build the project (requires Go and `protoc`):
+Build the project (requires docker and buildx):
 
 ```bash
-make generate     # protoc → api/specs/specs.pb.go
-make build
+make omni-infra-provider-ovhcloud-linux-amd64
 ```
 
 Run the executable:
@@ -174,9 +180,31 @@ OS_AUTH_URL=https://auth.cloud.ovh.net/v3 \
 OS_USERNAME=user-XXXXXXXX \
 OS_PASSWORD=... \
 OS_TENANT_ID=... \
-  ./_out/omni-infra-provider-ovhcloud \
+  ./_out/omni-infra-provider-ovhcloud-linux-amd64 \
     --omni-api-endpoint https://<account-name>.omni.siderolabs.io/ \
     --omni-service-account-key <infra-provider-key>
+```
+
+## Local development
+
+The repo ships a `docker-compose.yml` that builds from source and reads
+credentials from `.env`:
+
+```bash
+cp .env.example .env
+$EDITOR .env       # fill in OS_* and OMNI_*
+
+make up            # rebuild image + recreate container
+make logs          # docker compose logs -f
+make down          # stop + remove
+```
+
+Other useful targets (run `make help` for the full list):
+
+```bash
+make lint                            # golangci-lint + gofumpt + govulncheck
+make unit-tests                      # go test with coverage → _out/coverage.txt
+make image-omni-infra-provider-ovhcloud  # multi-arch image build
 ```
 
 ## License

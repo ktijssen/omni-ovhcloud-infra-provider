@@ -1,11 +1,11 @@
 module github.com/ktijssen/omni-ovhcloud-infra-provider
 
-go 1.26.2
+go 1.26.3
 
 require (
 	github.com/cosi-project/runtime v1.16.1
 	github.com/gophercloud/gophercloud/v2 v2.12.0
-	github.com/siderolabs/omni/client v1.8.0
+	github.com/siderolabs/omni/client v1.8.0-beta.1.0.20260526080537-fa2f11fc0a64
 	github.com/siderolabs/talos/pkg/machinery v1.13.3
 	github.com/spf13/cobra v1.10.2
 	go.uber.org/zap v1.28.0
