@@ -1,0 +1,52 @@
+---
+kind: common.Build
+spec:
+  ignoredPaths:
+    - ".env"
+    - ".idea/"
+    - ".vscode/"
+    - "coverage.txt"
+    - "*.test"
+    - "*.out"
+---
+kind: auto.CustomSteps
+spec:
+  steps:
+    - name: rekres-no-workflows
+      toplevel: true
+---
+kind: custom.Step
+name: rekres-no-workflows
+spec:
+  makefile:
+    enabled: true
+    phony: true
+    script:
+      - "@rm -rf .kres-workflows-backup && cp -r .github/workflows .kres-workflows-backup"
+      - "@$(MAKE) rekres"
+      - "@rm -rf .github/workflows && mv .kres-workflows-backup .github/workflows"
+---
+kind: golang.Generate
+spec:
+  versionPackagePath: internal/pkg/version
+  baseSpecPath: /api
+  specs:
+    - source: api/specs/specs.proto
+      subdirectory: specs
+---
+kind: golang.Build
+name: omni-infra-provider-ovhcloud
+spec:
+  outputs:
+    linux-amd64:
+      GOOS: linux
+      GOARCH: amd64
+    linux-arm64:
+      GOOS: linux
+      GOARCH: arm64
+---
+kind: common.Image
+name: image-omni-infra-provider-ovhcloud
+spec:
+  extraEnvironment:
+    PLATFORM: linux/amd64,linux/arm64

@@ -24,6 +24,7 @@ import (
 	"github.com/ktijssen/omni-ovhcloud-infra-provider/internal/pkg/provider"
 	"github.com/ktijssen/omni-ovhcloud-infra-provider/internal/pkg/provider/meta"
 	osfacade "github.com/ktijssen/omni-ovhcloud-infra-provider/internal/pkg/provider/openstack"
+	"github.com/ktijssen/omni-ovhcloud-infra-provider/internal/pkg/version"
 )
 
 //go:embed data/schema.json
@@ -36,6 +37,7 @@ var rootCmd = &cobra.Command{
 	Use:          "provider",
 	Short:        "OVHcloud Omni infrastructure provider",
 	Long:         `Connects to Omni as an infra provider and manages instances on OVHcloud Public Cloud (OpenStack).`,
+	Version:      version.Tag,
 	SilenceUsage: true,
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		logger, err := zap.NewProductionConfig().Build(zap.AddStacktrace(zapcore.ErrorLevel))
@@ -72,7 +74,9 @@ var rootCmd = &cobra.Command{
 
 		logger.Info("starting infra provider",
 			zap.String("provider_id", meta.ProviderID),
-			zap.String("omni_endpoint", cfg.omniAPIEndpoint))
+			zap.String("omni_endpoint", cfg.omniAPIEndpoint),
+			zap.String("version", version.Tag),
+			zap.String("sha", version.SHA))
 
 		clientOptions := []client.Option{
 			client.WithInsecureSkipTLSVerify(cfg.insecureSkipVerify),
@@ -88,6 +92,7 @@ var rootCmd = &cobra.Command{
 			infra.WithOmniEndpoint(cfg.omniAPIEndpoint),
 			infra.WithClientOptions(clientOptions...),
 			infra.WithEncodeRequestIDsIntoTokens(),
+			infra.WithVersion(version.Tag),
 		)
 	},
 }
