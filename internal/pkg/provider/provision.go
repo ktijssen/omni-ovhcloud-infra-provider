@@ -43,11 +43,10 @@ var uuidRE = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[
 
 // Provisioner provisions Talos nodes as OpenStack instances on OVHcloud Public Cloud.
 type Provisioner struct {
-	os *osfacade.Client
-
-	mu          sync.Mutex
+	os          *osfacade.Client
 	flavorByKey map[string]string // (project|region|name) -> flavor ID
 	netByKey    map[string]string // (project|region|name) -> network ID
+	mu          sync.Mutex
 }
 
 // NewProvisioner creates a new provisioner.
@@ -111,14 +110,14 @@ func (p *Provisioner) stepEnsureImage(ctx context.Context, logger *zap.Logger, p
 	imageName := buildImageName(state.Schematic, state.TalosVersion, data.Region)
 
 	if state.ImageId != "" {
-		image, err := images.Get(ctx, imageClient, state.ImageId).Extract()
-		if err != nil {
-			if osfacade.IsNotFound(err) {
+		image, getErr := images.Get(ctx, imageClient, state.ImageId).Extract()
+		if getErr != nil {
+			if osfacade.IsNotFound(getErr) {
 				logger.Info("cached image disappeared, will re-upload", zap.String("image_id", state.ImageId))
 
 				state.ImageId = ""
 			} else {
-				return provision.NewRetryErrorf(imageRetry, "failed to get image %s: %w", state.ImageId, err)
+				return provision.NewRetryErrorf(imageRetry, "failed to get image %s: %w", state.ImageId, getErr)
 			}
 		} else {
 			switch image.Status {
@@ -130,7 +129,8 @@ func (p *Provisioner) stepEnsureImage(ctx context.Context, logger *zap.Logger, p
 				logger.Info("image still uploading", zap.String("image_id", image.ID), zap.String("status", string(image.Status)))
 
 				return provision.NewRetryInterval(imageRetry)
-			default:
+			case images.ImageStatusUploading, images.ImageStatusKilled, images.ImageStatusDeleted,
+				images.ImageStatusPendingDelete, images.ImageStatusDeactivated:
 				logger.Warn("image in unexpected state, re-uploading", zap.String("image_id", image.ID), zap.String("status", string(image.Status)))
 
 				state.ImageId = ""
@@ -138,8 +138,8 @@ func (p *Provisioner) stepEnsureImage(ctx context.Context, logger *zap.Logger, p
 		}
 	}
 
-	if existing, err := findImageByName(ctx, imageClient, imageName); err != nil {
-		return provision.NewRetryErrorf(imageRetry, "failed to list images: %w", err)
+	if existing, findErr := findImageByName(ctx, imageClient, imageName); findErr != nil {
+		return provision.NewRetryErrorf(imageRetry, "failed to list images: %w", findErr)
 	} else if existing != nil {
 		state.ImageId = existing.ID
 
@@ -544,7 +544,7 @@ func findImageByName(ctx context.Context, imageClient *gophercloud.ServiceClient
 		}
 	}
 
-	return nil, nil
+	return nil, nil //nolint:nilnil // nil image, nil error is the documented "not found" sentinel
 }
 
 // uploadImage streams the image bytes from URL into Glance.
@@ -559,7 +559,7 @@ func uploadImage(ctx context.Context, imageClient *gophercloud.ServiceClient, im
 		return fmt.Errorf("download image %q: %w", imageURL, err)
 	}
 
-	defer func() { _ = resp.Body.Close() }()
+	defer func() { _ = resp.Body.Close() }() //nolint:errcheck // closing a response body we only read from
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("download image %q: HTTP %d", imageURL, resp.StatusCode)
@@ -631,15 +631,17 @@ func firstIPv4InNetwork(raw any) string {
 			continue
 		}
 
-		ver, _ := entry["version"].(float64)
-		if int(ver) != 4 {
+		ver, ok := entry["version"].(float64)
+		if !ok || int(ver) != 4 {
 			continue
 		}
 
-		addr, _ := entry["addr"].(string)
-		if addr != "" {
-			return addr
+		addr, ok := entry["addr"].(string)
+		if !ok || addr == "" {
+			continue
 		}
+
+		return addr
 	}
 
 	return ""

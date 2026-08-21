@@ -24,10 +24,9 @@ import (
 
 // Client is the project-scoped OpenStack façade used by the provisioner.
 type Client struct {
+	pc  *gophercloud.ProviderClient
 	cfg config.OpenStackConfig
-
-	mu sync.Mutex
-	pc *gophercloud.ProviderClient
+	mu  sync.Mutex
 }
 
 // New returns a Client; no Keystone calls are made until Provider is invoked.
