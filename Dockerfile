@@ -1,15 +1,15 @@
-# syntax = docker/dockerfile-upstream:1.24.0-labs
+# syntax = docker/dockerfile-upstream:1.26.0-labs
 
-ARG TOOLCHAIN=docker.io/golang:1.26-alpine
+ARG TOOLCHAIN=docker.io/golang:1.27-alpine
 ARG TARGETARCH
 ARG GOLANGCILINT_VERSION=v2.12.2
 ARG GOFUMPT_VERSION=v0.10.0
 ARG GOVULNCHECK_VERSION=latest
 ARG PROTOBUF_GO_VERSION=latest
 
-FROM ghcr.io/siderolabs/ca-certificates:v1.12.0 AS image-ca-certificates
+FROM ghcr.io/siderolabs/ca-certificates:v1.14.0 AS image-ca-certificates
 
-FROM ghcr.io/siderolabs/fhs:v1.12.0 AS image-fhs
+FROM ghcr.io/siderolabs/fhs:v1.14.0 AS image-fhs
 
 # collects proto specs
 FROM scratch AS proto-specs
