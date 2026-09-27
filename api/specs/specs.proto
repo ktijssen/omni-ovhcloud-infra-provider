@@ -12,4 +12,5 @@ message MachineSpec {
   string region = 5;
   string public_ipv4 = 6;
   string project_id = 7;   // OpenStack project resolved from MachineClass; recorded for Deprovision
+  string server_group_id = 8; // Nova server group (OVH instance group) UUID when instance_group_policy is set
 }

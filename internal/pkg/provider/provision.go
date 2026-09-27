@@ -47,6 +47,7 @@ type Provisioner struct {
 	flavorByKey map[string]string // (project|region|name) -> flavor ID
 	netByKey    map[string]string // (project|region|name) -> network ID
 	mu          sync.Mutex
+	groupMu     sync.Mutex
 }
 
 // NewProvisioner creates a new provisioner.
@@ -244,6 +245,26 @@ func (p *Provisioner) stepCreateInstance(ctx context.Context, logger *zap.Logger
 		return provision.NewRetryErrorf(instanceRetry, "failed to create hostname config patch: %w", err)
 	}
 
+	var hints servers.SchedulerHintOptsBuilder
+
+	if data.InstanceGroupPolicy != "" {
+		requestSetID, ok := pctx.GetMachineRequestSetID()
+		if !ok {
+			return fmt.Errorf("instance_group_policy requires the machine request to belong to a machine request set")
+		}
+
+		p.groupMu.Lock()
+		defer p.groupMu.Unlock()
+
+		groupID, groupErr := ensureServerGroup(ctx, logger, compute, serverGroupName(requestSetID), data.InstanceGroupPolicy)
+		if groupErr != nil {
+			return provision.NewRetryErrorf(instanceRetry, "failed to ensure server group: %w", groupErr)
+		}
+
+		state.ServerGroupId = groupID
+		hints = servers.SchedulerHintOpts{Group: groupID}
+	}
+
 	logger.Info("creating Nova instance",
 		zap.String("name", hostname),
 		zap.String("region", data.Region),
@@ -251,7 +272,8 @@ func (p *Provisioner) stepCreateInstance(ctx context.Context, logger *zap.Logger
 		zap.String("flavor_id", flavorID),
 		zap.String("network", data.Network),
 		zap.String("network_id", networkID),
-		zap.String("image_id", state.ImageId))
+		zap.String("image_id", state.ImageId),
+		zap.String("server_group_id", state.ServerGroupId))
 
 	server, err := servers.Create(ctx, compute, servers.CreateOpts{
 		Name:      hostname,
@@ -262,7 +284,7 @@ func (p *Provisioner) stepCreateInstance(ctx context.Context, logger *zap.Logger
 		Metadata: map[string]string{
 			"omni-managed": "true",
 		},
-	}, nil).Extract()
+	}, hints).Extract()
 	if err != nil {
 		return provision.NewRetryErrorf(instanceRetry, "failed to create instance: %w", err)
 	}
@@ -343,10 +365,11 @@ func (p *Provisioner) stepWaitInstance(ctx context.Context, logger *zap.Logger, 
 // The Glance image is left in place — it is shared across all instances of
 // the same (project, region, schematic, version) and image cleanup is out
 // of scope for v1.
+// A provider-managed instance group is deleted once its last instance is deprovisioned.
 func (p *Provisioner) Deprovision(ctx context.Context, logger *zap.Logger, machine *resources.Machine, _ *infra.MachineRequest) error {
 	state := machine.TypedSpec().Value
 
-	if state.InstanceId == "" {
+	if state.InstanceId == "" && state.ServerGroupId == "" {
 		logger.Info("no instance to delete")
 
 		return nil
@@ -369,21 +392,28 @@ func (p *Provisioner) Deprovision(ctx context.Context, logger *zap.Logger, machi
 		return fmt.Errorf("failed to build compute client: %w", err)
 	}
 
-	logger.Info("deleting instance",
-		zap.String("instance_id", state.InstanceId),
-		zap.String("region", state.Region))
+	if state.InstanceId != "" {
+		logger.Info("deleting instance",
+			zap.String("instance_id", state.InstanceId),
+			zap.String("region", state.Region))
 
-	if err := servers.Delete(ctx, compute, state.InstanceId).ExtractErr(); err != nil {
-		if osfacade.IsNotFound(err) {
+		if err = servers.Delete(ctx, compute, state.InstanceId).ExtractErr(); err != nil {
+			if !osfacade.IsNotFound(err) {
+				return fmt.Errorf("failed to delete instance %s: %w", state.InstanceId, err)
+			}
+
 			logger.Info("instance already deleted", zap.String("instance_id", state.InstanceId))
-
-			return nil
 		}
-
-		return fmt.Errorf("failed to delete instance %s: %w", state.InstanceId, err)
 	}
 
-	return nil
+	if state.ServerGroupId == "" {
+		return nil
+	}
+
+	p.groupMu.Lock()
+	defer p.groupMu.Unlock()
+
+	return cleanupServerGroup(ctx, logger, compute, state.ServerGroupId, state.InstanceId)
 }
 
 func unmarshalData(pctx provision.Context[*resources.Machine]) (Data, error) {

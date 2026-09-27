@@ -115,13 +115,45 @@ Apply the machine class with the Omni UI or CLI.
 
 ### `providerData` fields
 
-| Field     | Type   | Required | Notes                                                                     |
-| --------- | ------ | -------- | ------------------------------------------------------------------------- |
-| `region`  | string | yes      | OVH region (`GRA11`, `SBG5`, `BHS5`, …)                                   |
-| `flavor`  | string | yes      | OpenStack flavor name (`b3-8`, `c3-8`, …)                                 |
-| `network` | string | yes      | Neutron network name or UUID (e.g. `Ext-Net` for the OVH public network). |
+| Field                   | Type   | Required | Notes                                                                                           |
+| ----------------------- | ------ | -------- | ----------------------------------------------------------------------------------------------- |
+| `region`                | string | yes      | OVH region (`GRA11`, `SBG5`, `BHS5`, …)                                                         |
+| `flavor`                | string | yes      | OpenStack flavor name (`b3-8`, `c3-8`, …)                                                       |
+| `network`               | string | yes      | Neutron network name or UUID (e.g. `Ext-Net` for the OVH public network).                       |
+| `instance_group_policy` | string | no       | `anti-affinity` spreads the machine set across hosts. See [Instance groups](#instance-groups).  |
 
 See [`test/machineclass.yaml`](test/machineclass.yaml) for a complete example.
+
+### Instance groups
+
+With `instance_group_policy` set, the provider places every machine of the
+same machine set (e.g. a cluster's control planes) in an OVHcloud instance
+group with that policy.
+The only supported policy is `anti-affinity`, which keeps the machines on
+separate physical hosts.
+
+Instance groups are OpenStack (Nova) server groups, so the provider manages
+them with the same OpenStack credentials as the instances:
+
+- One group per machine set and region, named `omni-<machine-request-set-id>`.
+  It is created with the first machine and deleted when the last one is
+  deprovisioned.
+- If the scheduler cannot find a separate host for a new instance, the
+  instance goes to `ERROR` and provisioning fails; it is not placed on a
+  shared host.
+- OVHcloud limits how many instances an anti-affinity group can hold, and
+  server groups count against the project quota
+  (`openstack quota show`).
+- Setting `instance_group_policy` on a machine class does not move existing
+  instances; it only applies to instances created afterwards.
+
+```yaml
+  providerData: |
+    region: GRA11
+    flavor: b3-8
+    network: Ext-Net
+    instance_group_policy: anti-affinity
+```
 
 ### Looking up valid values
 

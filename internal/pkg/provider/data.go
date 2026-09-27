@@ -6,6 +6,7 @@ package provider
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 )
 
@@ -14,9 +15,10 @@ import (
 // Project (tenant) is configured at the provider level; only region, flavor
 // and network vary per MachineClass.
 type Data struct {
-	Region  string `yaml:"region"`
-	Flavor  string `yaml:"flavor"`
-	Network string `yaml:"network"`
+	Region              string `yaml:"region"`
+	Flavor              string `yaml:"flavor"`
+	Network             string `yaml:"network"`
+	InstanceGroupPolicy string `yaml:"instance_group_policy"`
 }
 
 // Validate checks that the required fields are set.
@@ -37,6 +39,11 @@ func (d *Data) Validate() error {
 
 	if len(missing) > 0 {
 		return fmt.Errorf("required machine class field(s) missing: %s", strings.Join(missing, ", "))
+	}
+
+	if d.InstanceGroupPolicy != "" && !slices.Contains(supportedInstanceGroupPolicies, d.InstanceGroupPolicy) {
+		return fmt.Errorf("unsupported instance_group_policy %q (supported: %s)",
+			d.InstanceGroupPolicy, strings.Join(supportedInstanceGroupPolicies, ", "))
 	}
 
 	return nil

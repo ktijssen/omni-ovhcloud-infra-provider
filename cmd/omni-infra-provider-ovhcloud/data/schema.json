@@ -12,6 +12,11 @@
     "network": {
       "type": "string",
       "description": "Neutron network name or UUID. Use 'Ext-Net' for the OVH public network, or your vRack/private network. Tip: list with `openstack network list`."
+    },
+    "instance_group_policy": {
+      "type": "string",
+      "enum": ["anti-affinity"],
+      "description": "Place all machines of the same machine set in an OVHcloud instance group (Nova server group) with this policy. 'anti-affinity' keeps them on separate hosts. The group is created and deleted automatically. Omit for no instance group."
     }
   },
   "required": ["region", "flavor", "network"]

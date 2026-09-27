@@ -2,16 +2,17 @@
 // versions:
 // 	protoc-gen-go v1.36.11
 // 	protoc        v6.31.1
-// source: specs.proto
+// source: specs/specs.proto
 
 package specs
 
 import (
-	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
-	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
+
+	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
+	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 )
 
 const (
@@ -30,14 +31,15 @@ type MachineSpec struct {
 	InstanceId    string                 `protobuf:"bytes,4,opt,name=instance_id,json=instanceId,proto3" json:"instance_id,omitempty"` // Nova server UUID
 	Region        string                 `protobuf:"bytes,5,opt,name=region,proto3" json:"region,omitempty"`
 	PublicIpv4    string                 `protobuf:"bytes,6,opt,name=public_ipv4,json=publicIpv4,proto3" json:"public_ipv4,omitempty"`
-	ProjectId     string                 `protobuf:"bytes,7,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"` // OpenStack project resolved from MachineClass; recorded for Deprovision
+	ProjectId     string                 `protobuf:"bytes,7,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`               // OpenStack project resolved from MachineClass; recorded for Deprovision
+	ServerGroupId string                 `protobuf:"bytes,8,opt,name=server_group_id,json=serverGroupId,proto3" json:"server_group_id,omitempty"` // Nova server group (OVH instance group) UUID when instance_group_policy is set
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *MachineSpec) Reset() {
 	*x = MachineSpec{}
-	mi := &file_specs_proto_msgTypes[0]
+	mi := &file_specs_specs_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -49,7 +51,7 @@ func (x *MachineSpec) String() string {
 func (*MachineSpec) ProtoMessage() {}
 
 func (x *MachineSpec) ProtoReflect() protoreflect.Message {
-	mi := &file_specs_proto_msgTypes[0]
+	mi := &file_specs_specs_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -62,7 +64,7 @@ func (x *MachineSpec) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MachineSpec.ProtoReflect.Descriptor instead.
 func (*MachineSpec) Descriptor() ([]byte, []int) {
-	return file_specs_proto_rawDescGZIP(), []int{0}
+	return file_specs_specs_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *MachineSpec) GetSchematic() string {
@@ -114,11 +116,18 @@ func (x *MachineSpec) GetProjectId() string {
 	return ""
 }
 
-var File_specs_proto protoreflect.FileDescriptor
+func (x *MachineSpec) GetServerGroupId() string {
+	if x != nil {
+		return x.ServerGroupId
+	}
+	return ""
+}
 
-const file_specs_proto_rawDesc = "" +
+var File_specs_specs_proto protoreflect.FileDescriptor
+
+const file_specs_specs_proto_rawDesc = "" +
 	"\n" +
-	"\vspecs.proto\x12\rovhcloudspecs\"\xe4\x01\n" +
+	"\x11specs/specs.proto\x12\rovhcloudspecs\"\x8c\x02\n" +
 	"\vMachineSpec\x12\x1c\n" +
 	"\tschematic\x18\x01 \x01(\tR\tschematic\x12#\n" +
 	"\rtalos_version\x18\x02 \x01(\tR\ftalosVersion\x12\x19\n" +
@@ -129,25 +138,26 @@ const file_specs_proto_rawDesc = "" +
 	"\vpublic_ipv4\x18\x06 \x01(\tR\n" +
 	"publicIpv4\x12\x1d\n" +
 	"\n" +
-	"project_id\x18\a \x01(\tR\tprojectIdB<Z:github.com/ktijssen/omni-ovhcloud-infra-provider/api/specsb\x06proto3"
+	"project_id\x18\a \x01(\tR\tprojectId\x12&\n" +
+	"\x0fserver_group_id\x18\b \x01(\tR\rserverGroupIdB<Z:github.com/ktijssen/omni-ovhcloud-infra-provider/api/specsb\x06proto3"
 
 var (
-	file_specs_proto_rawDescOnce sync.Once
-	file_specs_proto_rawDescData []byte
+	file_specs_specs_proto_rawDescOnce sync.Once
+	file_specs_specs_proto_rawDescData []byte
 )
 
-func file_specs_proto_rawDescGZIP() []byte {
-	file_specs_proto_rawDescOnce.Do(func() {
-		file_specs_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_specs_proto_rawDesc), len(file_specs_proto_rawDesc)))
+func file_specs_specs_proto_rawDescGZIP() []byte {
+	file_specs_specs_proto_rawDescOnce.Do(func() {
+		file_specs_specs_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_specs_specs_proto_rawDesc), len(file_specs_specs_proto_rawDesc)))
 	})
-	return file_specs_proto_rawDescData
+	return file_specs_specs_proto_rawDescData
 }
 
-var file_specs_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
-var file_specs_proto_goTypes = []any{
+var file_specs_specs_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_specs_specs_proto_goTypes = []any{
 	(*MachineSpec)(nil), // 0: ovhcloudspecs.MachineSpec
 }
-var file_specs_proto_depIdxs = []int32{
+var file_specs_specs_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for method output_type
 	0, // [0:0] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name
@@ -155,26 +165,26 @@ var file_specs_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for field type_name
 }
 
-func init() { file_specs_proto_init() }
-func file_specs_proto_init() {
-	if File_specs_proto != nil {
+func init() { file_specs_specs_proto_init() }
+func file_specs_specs_proto_init() {
+	if File_specs_specs_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_specs_proto_rawDesc), len(file_specs_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_specs_specs_proto_rawDesc), len(file_specs_specs_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   1,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
-		GoTypes:           file_specs_proto_goTypes,
-		DependencyIndexes: file_specs_proto_depIdxs,
-		MessageInfos:      file_specs_proto_msgTypes,
+		GoTypes:           file_specs_specs_proto_goTypes,
+		DependencyIndexes: file_specs_specs_proto_depIdxs,
+		MessageInfos:      file_specs_specs_proto_msgTypes,
 	}.Build()
-	File_specs_proto = out.File
-	file_specs_proto_goTypes = nil
-	file_specs_proto_depIdxs = nil
+	File_specs_specs_proto = out.File
+	file_specs_specs_proto_goTypes = nil
+	file_specs_specs_proto_depIdxs = nil
 }
