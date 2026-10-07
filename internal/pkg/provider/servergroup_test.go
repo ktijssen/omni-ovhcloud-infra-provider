@@ -76,14 +76,14 @@ func (f *fakeNova) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		writeJSON(w, http.StatusOK, map[string]any{"server": s})
+		writeJSON(w, map[string]any{"server": s})
 	case r.Method == http.MethodGet && r.URL.Path == "/os-server-groups":
 		list := make([]*fakeGroup, 0, len(f.groups))
 		for _, g := range f.groups {
 			list = append(list, g)
 		}
 
-		writeJSON(w, http.StatusOK, map[string]any{"server_groups": list})
+		writeJSON(w, map[string]any{"server_groups": list})
 	case r.Method == http.MethodPost && r.URL.Path == "/os-server-groups":
 		var body struct {
 			ServerGroup map[string]any `json:"server_group"`
@@ -111,7 +111,7 @@ func (f *fakeNova) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		f.groups[g.ID] = g
 
-		writeJSON(w, http.StatusOK, map[string]any{"server_group": g})
+		writeJSON(w, map[string]any{"server_group": g})
 	case r.Method == http.MethodGet && hasID:
 		g, ok := f.groups[id]
 		if !ok {
@@ -120,7 +120,7 @@ func (f *fakeNova) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		writeJSON(w, http.StatusOK, map[string]any{"server_group": g})
+		writeJSON(w, map[string]any{"server_group": g})
 	case r.Method == http.MethodDelete && hasID:
 		if _, ok := f.groups[id]; !ok {
 			http.NotFound(w, r)
@@ -137,9 +137,9 @@ func (f *fakeNova) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func writeJSON(w http.ResponseWriter, status int, v any) {
+func writeJSON(w http.ResponseWriter, v any) {
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
+	w.WriteHeader(http.StatusOK)
 
 	_ = json.NewEncoder(w).Encode(v) //nolint:errcheck,errchkjson // test fake
 }
