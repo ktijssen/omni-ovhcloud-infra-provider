@@ -191,13 +191,15 @@ spec:
 
 ### Image handling
 
-On first boot in a given `(project, region)`, the provider downloads the
-Talos OpenStack image (qcow2) from
-`factory.talos.dev/image/<schematic>/<version>/openstack-amd64.qcow2`,
-uploads it to Glance with name
-`talos-<short-schematic>-<version>-<region>`, and waits for it to become
-`active`.
-Subsequent provisioning of the same `(project, region, schematic, version)`
+On first boot in a given `(project, region)`, the provider asks Omni for the
+Talos OpenStack image (qcow2) and downloads it from the Image Factory Omni
+uses for the requested Talos version (`factory.talos.dev` by default; Omni
+may route newer Talos versions to a different factory, and may require
+authenticated downloads).
+The image is uploaded to Glance with name
+`talos-<short-schematic>-<version>-<short-storage-key>-<region>`, and the
+provider waits for it to become `active`.
+Subsequent provisioning of the same `(project, region, factory, schematic, version)`
 reuses the cached image.
 Images are not deleted on deprovision.
 

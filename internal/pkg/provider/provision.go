@@ -7,6 +7,7 @@ package provider
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -22,7 +23,7 @@ import (
 	"github.com/gophercloud/gophercloud/v2/openstack/image/v2/images"
 	"github.com/gophercloud/gophercloud/v2/openstack/networking/v2/networks"
 	"github.com/gophercloud/gophercloud/v2/pagination"
-	"github.com/siderolabs/omni/client/pkg/constants"
+	"github.com/siderolabs/omni/client/pkg/imagefactory"
 	"github.com/siderolabs/omni/client/pkg/infra/provision"
 	"github.com/siderolabs/omni/client/pkg/omni/resources/infra"
 	talosconfig "github.com/siderolabs/talos/pkg/machinery/config"
@@ -38,6 +39,14 @@ const (
 	instanceRetry = 10 * time.Second
 	managedTag    = "omni-managed"
 )
+
+// installationMediaSpec is the OpenStack qcow2 disk image fetched from the image factory.
+var installationMediaSpec = provision.MediaSpec{
+	Kind:         imagefactory.InstallationMediaKindDisk,
+	Platform:     "openstack",
+	Architecture: "amd64",
+	Format:       "qcow2",
+}
 
 var uuidRE = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
 
@@ -70,21 +79,24 @@ func (p *Provisioner) ProvisionSteps() []provision.Step[*resources.Machine] {
 }
 
 func (p *Provisioner) stepGenerateSchematic(ctx context.Context, logger *zap.Logger, pctx provision.Context[*resources.Machine]) error {
-	if pctx.State.TypedSpec().Value.Schematic != "" {
+	state := pctx.State.TypedSpec().Value
+	if state.Schematic != "" && state.StorageKey != "" {
 		return nil
 	}
 
-	schematic, err := pctx.GenerateSchematicID(ctx, logger, provision.WithoutConnectionParams())
+	media, err := pctx.EnsureInstallationMedia(ctx, logger, installationMediaSpec, provision.WithoutConnectionParams())
 	if err != nil {
-		return fmt.Errorf("failed to generate schematic ID: %w", err)
+		return fmt.Errorf("failed to resolve installation media: %w", err)
 	}
 
-	pctx.State.TypedSpec().Value.Schematic = schematic
-	pctx.State.TypedSpec().Value.TalosVersion = pctx.GetTalosVersion()
+	state.Schematic = media.SchematicID
+	state.StorageKey = media.StorageKey
+	state.TalosVersion = pctx.GetTalosVersion()
 
 	logger.Info("schematic generated",
-		zap.String("schematic", schematic),
-		zap.String("talos_version", pctx.GetTalosVersion()))
+		zap.String("schematic", media.SchematicID),
+		zap.String("talos_version", state.TalosVersion),
+		zap.String("image_factory_host", media.ImageFactoryHost))
 
 	return nil
 }
@@ -108,7 +120,7 @@ func (p *Provisioner) stepEnsureImage(ctx context.Context, logger *zap.Logger, p
 		return fmt.Errorf("failed to build image client for region %q: %w", data.Region, err)
 	}
 
-	imageName := buildImageName(state.Schematic, state.TalosVersion, data.Region)
+	imageName := buildImageName(state.Schematic, state.TalosVersion, state.StorageKey, data.Region)
 
 	if state.ImageId != "" {
 		image, getErr := images.Get(ctx, imageClient, state.ImageId).Extract()
@@ -155,15 +167,16 @@ func (p *Provisioner) stepEnsureImage(ctx context.Context, logger *zap.Logger, p
 		return provision.NewRetryInterval(imageRetry)
 	}
 
-	imageURL, err := buildImageURL(state.Schematic, state.TalosVersion)
+	// Resolved right before the upload: the URL may carry a short-lived download token.
+	media, err := pctx.EnsureInstallationMedia(ctx, logger, installationMediaSpec, provision.WithoutConnectionParams())
 	if err != nil {
-		return fmt.Errorf("failed to build image URL: %w", err)
+		return provision.NewRetryErrorf(imageRetry, "failed to resolve installation media: %w", err)
 	}
 
 	logger.Info("uploading custom image to Glance",
 		zap.String("name", imageName),
 		zap.String("region", data.Region),
-		zap.String("url", imageURL))
+		zap.Stringer("media", media))
 
 	visibility := images.ImageVisibilityPrivate
 
@@ -180,7 +193,7 @@ func (p *Provisioner) stepEnsureImage(ctx context.Context, logger *zap.Logger, p
 
 	state.ImageId = created.ID
 
-	if err := uploadImage(ctx, imageClient, created.ID, imageURL); err != nil {
+	if err := uploadImage(ctx, imageClient, created.ID, media); err != nil {
 		return provision.NewRetryErrorf(imageRetry, "failed to upload image data: %w", err)
 	}
 
@@ -577,34 +590,58 @@ func findImageByName(ctx context.Context, imageClient *gophercloud.ServiceClient
 	return nil, nil //nolint:nilnil // nil image, nil error is the documented "not found" sentinel
 }
 
-// uploadImage streams the image bytes from URL into Glance.
-func uploadImage(ctx context.Context, imageClient *gophercloud.ServiceClient, imageID, imageURL string) error {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, imageURL, nil)
+// uploadImage streams the installation media bytes into Glance.
+//
+// The media URL can carry credentials, so it is never included in errors or logs.
+func uploadImage(ctx context.Context, imageClient *gophercloud.ServiceClient, imageID string, media imagefactory.InstallationMedia) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, media.URL, nil)
 	if err != nil {
-		return fmt.Errorf("build image request: %w", err)
+		return fmt.Errorf("build image request for %s: %w", media, redactURLError(err))
+	}
+
+	for key, values := range media.Headers {
+		for _, value := range values {
+			req.Header.Add(key, value)
+		}
 	}
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return fmt.Errorf("download image %q: %w", imageURL, err)
+		return fmt.Errorf("download image %s: %w", media, redactURLError(err))
 	}
 
 	defer func() { _ = resp.Body.Close() }() //nolint:errcheck // closing a response body we only read from
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("download image %q: HTTP %d", imageURL, resp.StatusCode)
+		return fmt.Errorf("download image %s: HTTP %d", media, resp.StatusCode)
 	}
 
 	return imagedata.Upload(ctx, imageClient, imageID, resp.Body).ExtractErr()
 }
 
-func buildImageName(schematic, version, region string) string {
-	short := schematic
-	if len(short) > 12 {
-		short = short[:12]
+// redactURLError strips the request URL from a *url.Error, since it can carry credentials.
+func redactURLError(err error) error {
+	if urlErr, ok := errors.AsType[*url.Error](err); ok {
+		return urlErr.Err
 	}
 
-	return fmt.Sprintf("talos-%s-%s-%s", short, sanitizeVersion(version), region)
+	return err
+}
+
+// buildImageName names the Glance image after the installation media it holds.
+//
+// The storage key identifies the media across image factories (it covers the factory URL as well as
+// the schematic and version), so the same schematic served by different factories never shares an image.
+func buildImageName(schematic, version, storageKey, region string) string {
+	return fmt.Sprintf("talos-%s-%s-%s-%s", shorten(schematic), sanitizeVersion(version), shorten(storageKey), region)
+}
+
+func shorten(s string) string {
+	if len(s) > 12 {
+		return s[:12]
+	}
+
+	return s
 }
 
 func sanitizeVersion(v string) string {
@@ -612,17 +649,6 @@ func sanitizeVersion(v string) string {
 	v = strings.ReplaceAll(v, "+", "-")
 
 	return v
-}
-
-func buildImageURL(schematic, version string) (string, error) {
-	u, err := url.Parse(constants.ImageFactoryBaseURL)
-	if err != nil {
-		return "", err
-	}
-
-	u = u.JoinPath("image", schematic, version, "openstack-amd64.qcow2")
-
-	return u.String(), nil
 }
 
 // extractIPv4 returns the first public-looking IPv4 address from the server's

@@ -13,4 +13,5 @@ message MachineSpec {
   string public_ipv4 = 6;
   string project_id = 7;   // OpenStack project resolved from MachineClass; recorded for Deprovision
   string server_group_id = 8; // Nova server group (OVH instance group) UUID when instance_group_policy is set
+  string storage_key = 9;     // Image factory storage key identifying the installation media; used to name the Glance image
 }
