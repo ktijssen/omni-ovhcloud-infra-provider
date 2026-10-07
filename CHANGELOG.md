@@ -1,3 +1,32 @@
+## [Omni OVHcloud Infra Provider 0.3.0](https://github.com/ktijssen/omni-ovhcloud-infra-provider/releases/tag/v0.3.0) (2026-10-07)
+
+Welcome to the v0.3.0 release of Omni OVHcloud Infra Provider!
+
+
+
+Please try out the release binaries and report any issues at
+https://github.com/ktijssen/omni-ovhcloud-infra-provider/issues.
+
+### Contributors
+
+* Kevin Tijssen
+* Tim Jones
+
+### Changes
+<details><summary>4 commits</summary>
+<p>
+
+* [`9e476d3`](https://github.com/ktijssen/omni-ovhcloud-infra-provider/commit/9e476d3a224255f60d094420939f137e45f0685a) Merge pull request  [#16](https://github.com/ktijssen/omni-ovhcloud-infra-provider/pull/16) from TimJones/support-factory-endpoints
+* [`6fd2b5c`](https://github.com/ktijssen/omni-ovhcloud-infra-provider/commit/6fd2b5cd374d6d8a226818490211e69a6e98ee24) feat: add support for dynamic factory endpoints
+* [`a214c5b`](https://github.com/ktijssen/omni-ovhcloud-infra-provider/commit/a214c5b1aa000a524a84ef5cd874b6a0dea99d9e) Merge pull request  [#14](https://github.com/ktijssen/omni-ovhcloud-infra-provider/pull/14) from TimJones/affinity-group
+* [`f25da0b`](https://github.com/ktijssen/omni-ovhcloud-infra-provider/commit/f25da0bba25d29b54bbb54677ed39812568fb92b) feat: support server group anti-affinity policy
+</p>
+</details>
+
+### Dependency Changes
+
+This release has no dependency changes
+
 ## [Omni OVHcloud Infra Provider 0.2.0](https://github.com/ktijssen/omni-ovhcloud-infra-provider/releases/tag/v0.2.0) (2026-08-21)
 
 Welcome to the v0.2.0 release of Omni OVHcloud Infra Provider!
