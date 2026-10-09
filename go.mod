@@ -4,8 +4,8 @@ go 1.27.1
 
 require (
 	github.com/cosi-project/runtime v1.16.3
-	github.com/gophercloud/gophercloud/v2 v2.14.0
-	github.com/siderolabs/omni/client v1.12.3
+	github.com/gophercloud/gophercloud/v2 v2.15.0
+	github.com/siderolabs/omni/client v1.12.4
 	github.com/siderolabs/talos/pkg/machinery v1.15.0-alpha.0.0.20260908133727-5c5fd29e95f7
 	github.com/spf13/cobra v1.10.2
 	go.uber.org/zap v1.28.0
