@@ -9,9 +9,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"net/http"
 	"net/url"
 	"regexp"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -237,9 +239,23 @@ func (p *Provisioner) stepCreateInstance(ctx context.Context, logger *zap.Logger
 		return fmt.Errorf("failed to build network client: %w", err)
 	}
 
-	networkID, err := p.resolveNetwork(ctx, networkClient, p.os.ProjectKey(), data.Region, data.Network)
-	if err != nil {
-		return provision.NewRetryErrorf(instanceRetry, "failed to resolve network %q: %w", data.Network, err)
+	refs := data.Networks()
+	networkIDs := make([]string, 0, len(refs))
+	attachments := make([]servers.Network, 0, len(refs))
+
+	for _, ref := range refs {
+		networkID, resolveErr := p.resolveNetwork(ctx, networkClient, p.os.ProjectKey(), data.Region, ref)
+		if resolveErr != nil {
+			return provision.NewRetryErrorf(instanceRetry, "failed to resolve network %q: %w", ref, resolveErr)
+		}
+
+		networkIDs = append(networkIDs, networkID)
+		attachments = append(attachments, servers.Network{UUID: networkID})
+	}
+
+	// Catches the same network given once by name and once by UUID.
+	if err = checkDuplicateNetworks(networkIDs); err != nil {
+		return err
 	}
 
 	hostname := pctx.GetRequestID()
@@ -283,8 +299,8 @@ func (p *Provisioner) stepCreateInstance(ctx context.Context, logger *zap.Logger
 		zap.String("region", data.Region),
 		zap.String("flavor", data.Flavor),
 		zap.String("flavor_id", flavorID),
-		zap.String("network", data.Network),
-		zap.String("network_id", networkID),
+		zap.Strings("networks", refs),
+		zap.Strings("network_ids", networkIDs),
 		zap.String("image_id", state.ImageId),
 		zap.String("server_group_id", state.ServerGroupId))
 
@@ -292,7 +308,7 @@ func (p *Provisioner) stepCreateInstance(ctx context.Context, logger *zap.Logger
 		Name:      hostname,
 		FlavorRef: flavorID,
 		ImageRef:  state.ImageId,
-		Networks:  []servers.Network{{UUID: networkID}},
+		Networks:  attachments,
 		UserData:  []byte(pctx.ConnectionParams.JoinConfig),
 		Metadata: map[string]string{
 			"omni-managed": "true",
@@ -348,7 +364,7 @@ func (p *Provisioner) stepWaitInstance(ctx context.Context, logger *zap.Logger, 
 
 	switch strings.ToUpper(server.Status) {
 	case "ACTIVE":
-		ip := extractIPv4(server.Addresses)
+		ip := extractIPv4(server.Addresses, data.Networks())
 		state.PublicIpv4 = ip
 
 		logger.Info("instance active",
@@ -653,21 +669,23 @@ func sanitizeVersion(v string) string {
 
 // extractIPv4 returns the first public-looking IPv4 address from the server's
 // Addresses map. OVHcloud Public Cloud attaches a public IP under the
-// "Ext-Net" network by default; we prefer that, then fall back to the first
-// IPv4 across all networks.
-func extractIPv4(addrs map[string]any) string {
-	const extNet = "Ext-Net"
+// "Ext-Net" network by default; we prefer that, then the configured networks
+// in attachment order, then any remaining network in name order, so the
+// result is stable when several networks are attached.
+//
+// Addresses are keyed by network name, so networks configured by UUID are
+// only reached through the name-ordered fallback.
+func extractIPv4(addrs map[string]any, networks []string) string {
+	order := append([]string{"Ext-Net"}, networks...)
 
-	if v4 := firstIPv4InNetwork(addrs[extNet]); v4 != "" {
-		return v4
+	for _, name := range slices.Sorted(maps.Keys(addrs)) {
+		if !slices.Contains(order, name) {
+			order = append(order, name)
+		}
 	}
 
-	for name, raw := range addrs {
-		if name == extNet {
-			continue
-		}
-
-		if v4 := firstIPv4InNetwork(raw); v4 != "" {
+	for _, name := range order {
+		if v4 := firstIPv4InNetwork(addrs[name]); v4 != "" {
 			return v4
 		}
 	}

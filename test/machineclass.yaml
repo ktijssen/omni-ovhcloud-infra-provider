@@ -7,4 +7,6 @@ spec:
     region: GRA11
     flavor: b3-8
     network: Ext-Net    # public network; use vRack/private network name or UUID for private
+    # additional_networks:  # extra networks attached after `network`, e.g. a vRack private network
+    #   - my-vrack-network
     instance_group_policy: anti-affinity # spread the machine set across hosts via an OVH instance group
