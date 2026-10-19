@@ -13,6 +13,15 @@
       "type": "string",
       "description": "Neutron network name or UUID. Use 'Ext-Net' for the OVH public network, or your vRack/private network. Tip: list with `openstack network list`."
     },
+    "additional_networks": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true,
+      "description": "Extra Neutron network names or UUIDs to attach, in interface order after 'network' (e.g. a vRack private network alongside Ext-Net). Each network may appear only once across 'network' and this list."
+    },
     "instance_group_policy": {
       "type": "string",
       "enum": ["anti-affinity"],

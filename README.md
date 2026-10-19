@@ -120,9 +120,33 @@ Apply the machine class with the Omni UI or CLI.
 | `region`                | string | yes      | OVH region (`GRA11`, `SBG5`, `BHS5`, …)                                                         |
 | `flavor`                | string | yes      | OpenStack flavor name (`b3-8`, `c3-8`, …)                                                       |
 | `network`               | string | yes      | Neutron network name or UUID (e.g. `Ext-Net` for the OVH public network).                       |
+| `additional_networks`   | list   | no       | Extra networks attached after `network`. See [Additional networks](#additional-networks).       |
 | `instance_group_policy` | string | no       | `anti-affinity` spreads the machine set across hosts. See [Instance groups](#instance-groups).  |
 
 See [`test/machineclass.yaml`](test/machineclass.yaml) for a complete example.
+
+### Additional networks
+
+`additional_networks` attaches more networks to each instance, for example a
+vRack private network alongside the public `Ext-Net`.
+Interfaces are attached in order: `network` first, then each entry of
+`additional_networks`.
+
+- Entries accept a network name or UUID, like `network`.
+- Each network may appear only once across `network` and
+  `additional_networks`, including the same network given by both name and
+  UUID.
+- Changing the list does not modify existing instances; it only applies to
+  instances created afterwards.
+
+```yaml
+  providerData: |
+    region: GRA11
+    flavor: b3-8
+    network: Ext-Net
+    additional_networks:
+      - my-vrack-network
+```
 
 ### Instance groups
 

@@ -8,4 +8,5 @@ var (
 	EnsureServerGroup  = ensureServerGroup
 	CleanupServerGroup = cleanupServerGroup
 	ServerGroupName    = serverGroupName
+	ExtractIPv4        = extractIPv4
 )
