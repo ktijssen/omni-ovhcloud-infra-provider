@@ -1,6 +1,6 @@
 module github.com/ktijssen/omni-ovhcloud-infra-provider
 
-go 1.27.1
+go 1.27.3
 
 require (
 	github.com/cosi-project/runtime v1.16.3
