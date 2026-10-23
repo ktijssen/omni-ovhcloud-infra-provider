@@ -1,3 +1,30 @@
+## [Omni OVHcloud Infra Provider 0.4.0](https://github.com/ktijssen/omni-ovhcloud-infra-provider/releases/tag/v0.4.0) (2026-10-23)
+
+Welcome to the v0.4.0 release of Omni OVHcloud Infra Provider!
+
+
+
+Please try out the release binaries and report any issues at
+https://github.com/ktijssen/omni-ovhcloud-infra-provider/issues.
+
+### Contributors
+
+* Kevin Tijssen
+* Tim Jones
+
+### Changes
+<details><summary>2 commits</summary>
+<p>
+
+* [`eb54816`](https://github.com/ktijssen/omni-ovhcloud-infra-provider/commit/eb5481611e12dfcad5490e90369cb4e07e70b784) Merge pull request  [#18](https://github.com/ktijssen/omni-ovhcloud-infra-provider/pull/18) from TimJones/additional-networks
+* [`09a92c3`](https://github.com/ktijssen/omni-ovhcloud-infra-provider/commit/09a92c33d29518ec0439e3d81ab40dd9ce224cfd) feat: support optional additional networks
+</p>
+</details>
+
+### Dependency Changes
+
+This release has no dependency changes
+
 ## [Omni OVHcloud Infra Provider 0.3.0](https://github.com/ktijssen/omni-ovhcloud-infra-provider/releases/tag/v0.3.0) (2026-10-07)
 
 Welcome to the v0.3.0 release of Omni OVHcloud Infra Provider!
