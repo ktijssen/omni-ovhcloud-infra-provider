@@ -4,9 +4,9 @@ go 1.27.3
 
 require (
 	github.com/cosi-project/runtime v1.16.3
-	github.com/gophercloud/gophercloud/v2 v2.14.0
-	github.com/siderolabs/omni/client v1.12.3
-	github.com/siderolabs/talos/pkg/machinery v1.15.0-alpha.0.0.20260908133727-5c5fd29e95f7
+	github.com/gophercloud/gophercloud/v2 v2.15.0
+	github.com/siderolabs/omni/client v1.12.4
+	github.com/siderolabs/talos/pkg/machinery v1.15.0-alpha.1
 	github.com/spf13/cobra v1.10.2
 	go.uber.org/zap v1.28.0
 	google.golang.org/protobuf v1.36.12
@@ -14,6 +14,7 @@ require (
 )
 
 require (
+	cel.dev/cel-go v0.32.0 // indirect
 	cel.dev/expr v0.25.3 // indirect
 	github.com/ProtonMail/go-crypto v1.4.1 // indirect
 	github.com/ProtonMail/gopenpgp/v3 v3.4.1 // indirect
@@ -77,7 +78,7 @@ require (
 	github.com/ryanuber/go-glob v1.0.0 // indirect
 	github.com/sasha-s/go-deadlock v0.3.9 // indirect
 	github.com/siderolabs/crypto v0.6.5 // indirect
-	github.com/siderolabs/gen v0.8.7 // indirect
+	github.com/siderolabs/gen v0.8.8 // indirect
 	github.com/siderolabs/go-api-signature v0.3.13 // indirect
 	github.com/siderolabs/go-pointer v1.0.1 // indirect
 	github.com/siderolabs/image-factory v1.6.2-0.20260904131343-4520b38a89a6 // indirect
